@@ -384,7 +384,9 @@ const T = {
     },
     footer: { links: "روابط سريعة", contact: "تواصل معنا", rights: "جميع الحقوق محفوظة." },
   },
-};
+} as const;
+
+type LangKey = keyof typeof T;
 
 const serviceIcons = [
   <Icons.Handshake />, <Icons.Scale />, <Icons.Search />,
@@ -392,7 +394,6 @@ const serviceIcons = [
 ];
 const stepIcons = [<Icons.FileText />, <Icons.MagnifyingGlass />, <Icons.Bolt />, <Icons.CheckCircle />];
 const valueIcons = [<Icons.Integrity />, <Icons.Efficiency />, <Icons.Lock />];
-const contactIcons = [<Icons.MapPin />, <Icons.Phone />, <Icons.Mail />, <Icons.Globe />];
 
 const WHATSAPP_NUMBER = "212600000000"; // ← Replace with real number
 
@@ -898,7 +899,7 @@ const styles = `
     .services-grid, .process-track, .about-values { grid-template-columns: 1fr; }
     .stats-inner { grid-template-columns: repeat(2, 1fr); }
     .why-layout, .contact-layout, .footer-grid { grid-template-columns: 1fr; }
-    .why-accent { right: 0; [dir="rtl"] & { left: 0; } }
+    .why-accent { right: 0; }
     .form-row { grid-template-columns: 1fr; }
     .process-track::before { display: none; }
     .process-node { flex-direction: row; align-items: flex-start; gap: 1.25rem; }
@@ -906,13 +907,27 @@ const styles = `
   }
 `;
 
+interface FormState {
+  name: string;
+  company: string;
+  email: string;
+  phone: string;
+  debtorName: string;
+  debtorLocation: string;
+  amount: string;
+  debtType: string;
+  description: string;
+  language: string;
+  agreed: boolean;
+}
+
 export default function App() {
-  const [lang, setLang] = useState("FR");
+  const [lang, setLang] = useState<LangKey>("FR");
   const [scrolled, setScrolled] = useState(false);
   const [activeSection, setActiveSection] = useState("home");
   const [submitted, setSubmitted] = useState(false);
-  const [toast, setToast] = useState(null);
-  const [form, setForm] = useState({
+  const [toast, setToast] = useState<string | null>(null);
+  const [form, setForm] = useState<FormState>({
     name: "", company: "", email: "", phone: "",
     debtorName: "", debtorLocation: "", amount: "",
     debtType: "", description: "", language: "",
@@ -922,7 +937,6 @@ export default function App() {
   const t = T[lang];
 
   useEffect(() => {
-    // Reset language default field
     setForm(f => ({ ...f, language: lang === "AR" ? t.contact.debtTypes[0] : "" }));
   }, [lang]);
 
@@ -932,9 +946,9 @@ export default function App() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const scrollTo = (id) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+  const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
 
-  const showToast = (msg) => {
+  const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(null), 4000);
   };
@@ -962,16 +976,25 @@ export default function App() {
       if (res.ok) { setSubmitted(true); showToast("✓ " + (data.reference_number || "")); }
       else {
         const firstErr = Object.values(data)[0];
-        showToast(Array.isArray(firstErr) ? firstErr[0] : firstErr);
+        showToast(Array.isArray(firstErr) ? (firstErr[0] as string) : (firstErr as string));
       }
     } catch {
       showToast("Cannot reach server. Is Django running?");
     }
   };
 
-  const navSections = [["home","nav.home"],["services","nav.services"],["process","nav.process"],["why","nav.why"],["about","nav.about"],["contact","nav.contact"]];
+  const navSections: [string, string][] = [
+    ["home","nav.home"],["services","nav.services"],["process","nav.process"],
+    ["why","nav.why"],["about","nav.about"],["contact","nav.contact"],
+  ];
 
-  const getT = (path) => path.split(".").reduce((o, k) => o?.[k], t);
+  const getT = (path: string): string => {
+    const result = path.split(".").reduce((o: unknown, k: string) => {
+      if (o && typeof o === "object") return (o as Record<string, unknown>)[k];
+      return undefined;
+    }, t as unknown);
+    return typeof result === "string" ? result : "";
+  };
 
   return (
     <div dir={t.dir}>
@@ -994,7 +1017,7 @@ export default function App() {
         </div>
         <div className="nav-right">
           <div className="lang-switcher">
-            {["FR","EN","AR"].map(l => (
+            {(["FR","EN","AR"] as LangKey[]).map(l => (
               <button key={l} className={`lang-btn ${lang === l ? "active" : ""}`} onClick={() => setLang(l)}>{l}</button>
             ))}
           </div>
@@ -1159,12 +1182,14 @@ export default function App() {
             <div>
               <h3 className="contact-info-title">{t.contact.infoTitle}</h3>
               <p className="contact-info-desc">{t.contact.infoDesc}</p>
-              {[
-                [<Icons.MapPin />, t.contact.address, "Casablanca, Morocco"],
-                [<Icons.Phone />, t.contact.phone, "+212 5XX-XXXXXX"],
-                [<Icons.Mail />, t.contact.email, "contact@hadiflouscom.ma"],
-                [<Icons.Globe />, t.contact.languages, t.contact.langVal],
-              ].map(([icon, lbl, val], i) => (
+              {(
+                [
+                  [<Icons.MapPin />, t.contact.address, "Casablanca, Morocco"],
+                  [<Icons.Phone />, t.contact.phone, "+212 5XX-XXXXXX"],
+                  [<Icons.Mail />, t.contact.email, "contact@hadiflouscom.ma"],
+                  [<Icons.Globe />, t.contact.languages, t.contact.langVal],
+                ] as [React.ReactNode, string, string][]
+              ).map(([icon, lbl, val], i) => (
                 <div key={i} className="contact-detail">
                   <div className="detail-icon">{icon}</div>
                   <div>
@@ -1232,7 +1257,7 @@ export default function App() {
                       <label className="flabel">{t.contact.debtType} <span className="flabel-req">*</span></label>
                       <select className="fcontrol" value={form.debtType} onChange={e => setForm({...form, debtType: e.target.value})}>
                         <option value="">—</option>
-                        {t.contact.debtTypes.map(d => <option key={d}>{d}</option>)}
+                        {t.contact.debtTypes.map((d: string) => <option key={d}>{d}</option>)}
                       </select>
                     </div>
                   </div>
@@ -1283,13 +1308,17 @@ export default function App() {
           </div>
         </div>
         <div className="footer-bottom">
-  © 2026 HadiFlosCom. {t.footer.rights}
-  {" · "}
-  <a
-    href="/admin"
-    style={{ color: "rgba(255,255,255,0.2)", textDecoration: "none", fontSize: "0.72rem", transition: "color 0.2s" }}
-    onMouseEnter={e => e.target.style.color = "var(--gold)"}
-    onMouseLeave={e => e.target.style.color = "rgba(255,255,255,0.2)"} > Admin </a> </div>
+          © 2026 HadiFlosCom. {t.footer.rights}
+          {" · "}
+          <a
+            href="/admin"
+            style={{ color: "rgba(255,255,255,0.2)", textDecoration: "none", fontSize: "0.72rem", transition: "color 0.2s" }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "var(--gold)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.2)"; }}
+          >
+            Admin
+          </a>
+        </div>
       </footer>
 
       {/* WHATSAPP FLOAT */}

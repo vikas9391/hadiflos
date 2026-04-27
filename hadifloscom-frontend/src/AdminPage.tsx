@@ -1,5 +1,22 @@
 import { useState, useEffect, useRef } from "react";
 
+interface Claim {
+  id: number;
+  reference_number: string;
+  full_name: string;
+  company_name: string;
+  email: string;
+  phone: string;
+  debtor_name: string;
+  debtor_location: string;
+  amount_owed: number;
+  debt_type: keyof typeof DEBT_TYPE_LABELS;
+  description: string;
+  status: keyof typeof STATUS_LABELS;
+  preferred_language: string;
+  created_at: string;
+}
+
 const API = "http://localhost:8000/api";
 
 // ─── STYLES ───────────────────────────────────────────────────────────────────
@@ -316,7 +333,6 @@ const styles = `
   .td-amount { font-weight: 700; color: var(--dark); font-family: 'Cormorant Garamond', serif; font-size: 1rem; }
   .td-muted { color: var(--text-light); font-size: 0.8rem; }
 
-  /* STATUS BADGE — aligned to actual model Status choices */
   .badge {
     display: inline-flex; align-items: center; gap: 0.35rem;
     padding: 0.3rem 0.75rem; border-radius: 50px;
@@ -339,14 +355,12 @@ const styles = `
   .badge-closed      { background: var(--off-white); color: var(--text-mid); border-color: var(--border); }
   .badge-closed .badge-dot { background: var(--text-light); }
 
-  /* TYPE TAG */
   .tag {
     display: inline-block; background: var(--gold-pale); color: var(--gold-mid);
     border: 1px solid var(--border-gold); padding: 0.2rem 0.625rem;
     border-radius: 4px; font-size: 0.7rem; font-weight: 600;
   }
 
-  /* VIEW BUTTON */
   .btn-view {
     padding: 0.4rem 0.875rem; border-radius: 8px;
     border: 1.5px solid var(--border-gold); background: var(--gold-pale);
@@ -358,7 +372,6 @@ const styles = `
   .btn-view:hover { background: var(--gold); color: white; border-color: var(--gold); }
   .btn-view svg { width: 13px; height: 13px; }
 
-  /* PAGINATION */
   .pagination {
     display: flex; align-items: center; justify-content: space-between;
     padding: 1rem 1.75rem; border-top: 1px solid var(--border);
@@ -375,7 +388,6 @@ const styles = `
   .page-btn:hover:not(.active):not(:disabled) { border-color: var(--gold); color: var(--gold); }
   .page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
-  /* MODAL */
   .overlay {
     position: fixed; inset: 0; background: rgba(10,8,4,0.65);
     z-index: 200; display: flex; align-items: center; justify-content: center;
@@ -432,7 +444,6 @@ const styles = `
   .btn-save:hover:not(:disabled) { background: var(--gold-mid); transform: translateY(-1px); }
   .btn-save:disabled { opacity: 0.6; cursor: not-allowed; }
 
-  /* CONTACT INFO BOX */
   .contact-mini {
     background: var(--dark); border-radius: var(--radius);
     padding: 1.25rem; margin-top: 1rem;
@@ -443,7 +454,6 @@ const styles = `
   .contact-mini-item a { color: rgba(255,255,255,0.55); text-decoration: none; }
   .contact-mini-item a:hover { color: var(--gold-light); }
 
-  /* EMPTY / LOADING */
   .empty { text-align: center; padding: 4.5rem 2rem; color: var(--text-light); }
   .empty-icon {
     width: 56px; height: 56px; border-radius: 50%;
@@ -461,7 +471,6 @@ const styles = `
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  /* TOAST */
   .toast {
     position: fixed; bottom: 1.75rem; right: 1.75rem; z-index: 9999;
     background: var(--dark-3); color: rgba(255,255,255,0.88);
@@ -472,7 +481,6 @@ const styles = `
   }
   @keyframes toastUp { from { transform: translateY(16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
-  /* FULL PAGE LOADER */
   .page-loader {
     min-height: 100vh; display: flex; align-items: center; justify-content: center;
     background: var(--off-white);
@@ -506,7 +514,6 @@ const Ico = {
 
 const PER_PAGE = 10;
 
-// ── Aligned to models.py Claim.Status choices ─────────────────────────────
 const STATUS_LABELS = {
   new:         "New",
   review:      "Under Review",
@@ -515,7 +522,7 @@ const STATUS_LABELS = {
   legal:       "Legal",
   settled:     "Settled",
   closed:      "Closed",
-};
+} as const;
 
 const DEBT_TYPE_LABELS = {
   commercial: "Commercial",
@@ -523,34 +530,29 @@ const DEBT_TYPE_LABELS = {
   loan:       "Loan Default",
   lease:      "Lease / Rent",
   other:      "Other",
-};
+} as const;
 
-function fmt(n) {
+function fmt(n: number) {
   return Number(n).toLocaleString("fr-MA", { minimumFractionDigits: 0 }) + " MAD";
 }
-function fmtDate(d) {
+function fmtDate(d: string | Date) {
   if (!d) return "—";
   return new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 }
 
 // ─── API HELPERS ──────────────────────────────────────────────────────────────
-/**
- * getCsrfToken — fetches the token from Django's GET /api/admin/login/
- * and also reads from the cookie if Django has already set it.
- */
-function getCookieCsrf() {
+function getCookieCsrf(): string {
   const match = document.cookie.match(/csrftoken=([^;]+)/);
-  return match ? match[1] : null;
+  return match ? match[1] : "";
 }
 
-async function fetchCsrf() {
-  // Django sets the cookie on any response; hitting the login GET is reliable.
+async function fetchCsrf(): Promise<string> {
   const r = await fetch(`${API}/admin/login/`, { credentials: "include" });
   const data = await r.json();
-  return data.csrfToken || getCookieCsrf() || "";
+  return (data.csrfToken as string) || getCookieCsrf() || "";
 }
 
-async function apiPost(path, body, csrfToken) {
+async function apiPost(path: string, body: unknown, csrfToken: string) {
   return fetch(`${API}${path}`, {
     method: "POST",
     credentials: "include",
@@ -562,7 +564,7 @@ async function apiPost(path, body, csrfToken) {
   });
 }
 
-async function apiPatch(path, body, csrfToken) {
+async function apiPatch(path: string, body: unknown, csrfToken: string) {
   return fetch(`${API}${path}`, {
     method: "PATCH",
     credentials: "include",
@@ -574,29 +576,32 @@ async function apiPatch(path, body, csrfToken) {
   });
 }
 
-async function apiGet(path) {
+async function apiGet(path: string) {
   return fetch(`${API}${path}`, { credentials: "include" });
 }
 
 // ─── STATUS BADGE ─────────────────────────────────────────────────────────────
-function StatusBadge({ status }) {
+function StatusBadge({ status }: { status: string }) {
   return (
     <span className={`badge badge-${status}`}>
       <span className="badge-dot" />
-      {STATUS_LABELS[status] || status}
+      {STATUS_LABELS[status as keyof typeof STATUS_LABELS] || status}
     </span>
   );
 }
 
 // ─── LOGIN PAGE ───────────────────────────────────────────────────────────────
-function LoginPage({ onLogin }) {
+interface LoginPageProps {
+  onLogin: (username: string) => void;
+}
+
+function LoginPage({ onLogin }: LoginPageProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError]       = useState("");
   const [loading, setLoading]   = useState(false);
   const csrfRef = useRef("");
 
-  // Pre-fetch CSRF token when login page mounts
   useEffect(() => {
     fetchCsrf().then(t => { csrfRef.current = t; });
   }, []);
@@ -609,7 +614,6 @@ function LoginPage({ onLogin }) {
     setLoading(true);
     setError("");
     try {
-      // Refresh CSRF token right before submitting (avoids stale token)
       const csrf = await fetchCsrf();
       csrfRef.current = csrf;
 
@@ -617,9 +621,9 @@ function LoginPage({ onLogin }) {
       const data = await res.json();
 
       if (res.ok) {
-        onLogin(data.username);
+        onLogin(data.username as string);
       } else {
-        setError(data.error || "Login failed. Please try again.");
+        setError((data.error as string) || "Login failed. Please try again.");
       }
     } catch {
       setError("Could not connect to server. Is Django running on port 8000?");
@@ -633,7 +637,7 @@ function LoginPage({ onLogin }) {
         <div className="login-logo">
           <div className="login-logo-mark">
             <img src="/assets/logo.png" alt="HadiFlosCom"
-              onError={e => { e.target.style.display = "none"; }} />
+              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
           </div>
           <h1>HadiFlosCom</h1>
           <span>Admin Portal</span>
@@ -681,7 +685,14 @@ function LoginPage({ onLogin }) {
 }
 
 // ─── CLAIM DETAIL MODAL ───────────────────────────────────────────────────────
-function ClaimModal({ claim, onClose, onStatusUpdate, csrfToken }) {
+interface ClaimModalProps {
+  claim: Claim;
+  onClose: () => void;
+  onStatusUpdate: (id: number, status: string) => void;
+  csrfToken: string;
+}
+
+function ClaimModal({ claim, onClose, onStatusUpdate, csrfToken }: ClaimModalProps) {
   const [status, setStatus] = useState(claim.status);
   const [saving, setSaving] = useState(false);
 
@@ -756,7 +767,11 @@ function ClaimModal({ claim, onClose, onStatusUpdate, csrfToken }) {
             </div>
             <div>
               <div className="detail-lbl">Debt Type</div>
-              <div className="detail-val"><span className="tag">{DEBT_TYPE_LABELS[claim.debt_type] || claim.debt_type}</span></div>
+              <div className="detail-val">
+                <span className="tag">
+                  {DEBT_TYPE_LABELS[claim.debt_type as keyof typeof DEBT_TYPE_LABELS] || claim.debt_type}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -780,7 +795,7 @@ function ClaimModal({ claim, onClose, onStatusUpdate, csrfToken }) {
 
           <div className="modal-section-label">Update Status</div>
           <div className="status-update-wrap">
-            <select className="status-select" value={status} onChange={e => setStatus(e.target.value)}>
+            <select className="status-select" value={status} onChange={e => setStatus(e.target.value as keyof typeof STATUS_LABELS)}>
               {Object.entries(STATUS_LABELS).map(([v, l]) => (
                 <option key={v} value={v}>{l}</option>
               ))}
@@ -798,26 +813,24 @@ function ClaimModal({ claim, onClose, onStatusUpdate, csrfToken }) {
 // ─── MAIN ADMIN APP ───────────────────────────────────────────────────────────
 export default function AdminPage() {
   // Auth state: null = checking, false = not authed, string = username
-  const [authState, setAuthState]   = useState(null);
-  const [tab, setTab]               = useState("dashboard");
-  const [claims, setClaims]         = useState([]);
+  const [authState, setAuthState]   = useState<string | null | false>(null);
+  const [tab, setTab]               = useState<"dashboard" | "claims">("dashboard");
+  const [claims, setClaims]         = useState<Claim[]>([]);
   const [loadingClaims, setLoadingClaims] = useState(false);
   const [search, setSearch]         = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage]             = useState(1);
-  const [selected, setSelected]     = useState(null);
-  const [toast, setToast]           = useState(null);
+  const [selected, setSelected]     = useState<Claim | null>(null);
+  const [toast, setToast]           = useState<string | null>(null);
   const csrfRef = useRef("");
 
-  // ── On mount: check if Django session is still valid ──────────────────────
   useEffect(() => {
     (async () => {
       try {
         const res = await apiGet("/admin/session/");
         const data = await res.json();
         if (data.authenticated) {
-          setAuthState(data.username);
-          // Grab CSRF token for future mutation requests
+          setAuthState(data.username as string);
           const csrf = await fetchCsrf();
           csrfRef.current = csrf;
         } else {
@@ -829,7 +842,6 @@ export default function AdminPage() {
     })();
   }, []);
 
-  // ── Fetch claims from protected endpoint once authed ──────────────────────
   useEffect(() => {
     if (authState && typeof authState === "string") fetchClaims();
   }, [authState]);
@@ -839,19 +851,18 @@ export default function AdminPage() {
     try {
       const res = await apiGet("/admin/claims/");
       if (res.status === 401 || res.status === 403) {
-        // Session expired
         setAuthState(false);
         return;
       }
       const data = await res.json();
-      setClaims(Array.isArray(data) ? data : data.results || []);
+      setClaims(Array.isArray(data) ? data : (data.results || []));
     } catch {
       showToast("Could not load claims. Is Django running?");
     }
     setLoadingClaims(false);
   };
 
-  const handleLogin = async (username) => {
+  const handleLogin = async (username: string) => {
     setAuthState(username);
     const csrf = await fetchCsrf();
     csrfRef.current = csrf;
@@ -865,17 +876,16 @@ export default function AdminPage() {
     setClaims([]);
   };
 
-  const showToast = (msg) => {
+  const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(null), 3500);
   };
 
-  const handleStatusUpdate = (id, status) => {
-    setClaims(prev => prev.map(c => c.id === id ? { ...c, status } : c));
+  const handleStatusUpdate = (id: number, status: string) => {
+    setClaims(prev => prev.map(c => c.id === id ? { ...c, status: status as keyof typeof STATUS_LABELS } : c));
     showToast("✓ Status updated successfully.");
   };
 
-  // ── Filtering & pagination ─────────────────────────────────────────────────
   const filtered = claims.filter(c => {
     const matchStatus = statusFilter === "all" || c.status === statusFilter;
     const q = search.toLowerCase();
@@ -892,7 +902,6 @@ export default function AdminPage() {
   const settled     = claims.filter(c => c.status === "settled").length;
   const newClaims   = claims.filter(c => c.status === "new").length;
 
-  // ── Render: still checking session ────────────────────────────────────────
   if (authState === null) {
     return (
       <>
@@ -907,7 +916,6 @@ export default function AdminPage() {
     );
   }
 
-  // ── Render: not authenticated ──────────────────────────────────────────────
   if (!authState) {
     return (
       <>
@@ -917,13 +925,12 @@ export default function AdminPage() {
     );
   }
 
-  // ── Render: authenticated ──────────────────────────────────────────────────
   const navItems = [
-    { id: "dashboard", label: "Dashboard",      icon: <Ico.Dashboard /> },
-    { id: "claims",    label: "All Claims",      icon: <Ico.Claims />   },
+    { id: "dashboard" as const, label: "Dashboard",  icon: <Ico.Dashboard /> },
+    { id: "claims"    as const, label: "All Claims",  icon: <Ico.Claims />   },
   ];
 
-  const topbarTitles = {
+  const topbarTitles: Record<"dashboard" | "claims", string> = {
     dashboard: "Dashboard Overview",
     claims:    "Claims Management",
   };
@@ -947,7 +954,7 @@ export default function AdminPage() {
           <div className="sidebar-brand">
             <div className="sidebar-logo-ring">
               <img src="/assets/logo.png" alt="HadiFlosCom"
-                onError={e => { e.target.style.display = "none"; }} />
+                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
             </div>
             <div className="sidebar-brand-text">
               <strong>HadiFlosCom</strong>
@@ -970,7 +977,7 @@ export default function AdminPage() {
 
           <div className="sidebar-footer">
             <div className="sidebar-user">
-              <div className="sidebar-user-avatar">{authState.charAt(0).toUpperCase()}</div>
+              <div className="sidebar-user-avatar">{(authState as string).charAt(0).toUpperCase()}</div>
               <div>
                 <div className="sidebar-user-name">{authState}</div>
                 <div className="sidebar-user-role">Administrator</div>
@@ -1173,7 +1180,11 @@ export default function AdminPage() {
                             <div className="td-sub">{c.debtor_location}</div>
                           </td>
                           <td><span className="td-amount">{fmt(c.amount_owed)}</span></td>
-                          <td><span className="tag">{DEBT_TYPE_LABELS[c.debt_type] || c.debt_type}</span></td>
+                          <td>
+                            <span className="tag">
+                              {DEBT_TYPE_LABELS[c.debt_type as keyof typeof DEBT_TYPE_LABELS] || c.debt_type}
+                            </span>
+                          </td>
                           <td><StatusBadge status={c.status} /></td>
                           <td><span className="td-muted">{fmtDate(c.created_at)}</span></td>
                           <td>
