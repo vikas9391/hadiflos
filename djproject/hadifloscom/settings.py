@@ -148,7 +148,7 @@ EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 DEFAULT_FROM_EMAIL = 'HadiFlosCom <contact@hadiflouscom.ma>'
 ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', 'admin@hadiflouscom.ma')
 
-ALLOWED_HOSTS = ['']
+ALLOWED_HOSTS = ['https://hadiflos-1.onrender.com']
 DEBUG = False
 
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')

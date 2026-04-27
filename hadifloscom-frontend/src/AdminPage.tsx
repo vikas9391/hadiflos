@@ -17,7 +17,7 @@ interface Claim {
   created_at: string;
 }
 
-const API = "http://localhost:8000/api";
+const API = "https://hadiflos.onrender.com/api";
 
 // ─── STYLES ───────────────────────────────────────────────────────────────────
 const styles = `
