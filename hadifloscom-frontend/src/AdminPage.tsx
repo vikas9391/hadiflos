@@ -124,6 +124,18 @@ const styles = `
   }
   .fcontrol:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(184,134,11,0.1); background: white; }
 
+  /* Password field with show/hide toggle */
+  .pw-wrap { position: relative; }
+  .pw-wrap .fcontrol { padding-right: 2.75rem; }
+  .pw-toggle {
+    position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%);
+    background: none; border: none; cursor: pointer; padding: 0;
+    color: var(--text-light); display: flex; align-items: center; justify-content: center;
+    transition: color 0.2s;
+  }
+  .pw-toggle:hover { color: var(--gold); }
+  .pw-toggle svg { width: 16px; height: 16px; }
+
   .btn-primary-full {
     width: 100%; background: linear-gradient(135deg, var(--gold), var(--gold-mid));
     color: white; border: none; cursor: pointer;
@@ -509,6 +521,7 @@ const Ico = {
   Close:     () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
   Logout:    () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>,
   Eye:       () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>,
+  EyeOff:    () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>,
   Alert:     () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,
   Scale:     () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v18M3 9l9-6 9 6M5 21h14M3 9h18M7 21l-4-12M17 21l4-12"/></svg>,
 };
@@ -548,9 +561,13 @@ function getCookieCsrf(): string {
 }
 
 async function fetchCsrf(): Promise<string> {
-  const r = await fetch(`${API}/admin/login/`, { credentials: "include" });
-  const data = await r.json();
-  return (data.csrfToken as string) || getCookieCsrf() || "";
+  try {
+    const r = await fetch(`${API}/admin/login/`, { credentials: "include" });
+    const data = await r.json();
+    return getCookieCsrf() || (data.csrfToken as string) || "";
+  } catch {
+    return getCookieCsrf() || "";
+  }
 }
 
 async function apiPost(path: string, body: unknown, csrfToken: string) {
@@ -597,10 +614,11 @@ interface LoginPageProps {
 }
 
 function LoginPage({ onLogin }: LoginPageProps) {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError]       = useState("");
-  const [loading, setLoading]   = useState(false);
+  const [identifier, setIdentifier] = useState("");  // accepts username OR email
+  const [password, setPassword]     = useState("");
+  const [showPw, setShowPw]         = useState(false);
+  const [error, setError]           = useState("");
+  const [loading, setLoading]       = useState(false);
   const csrfRef = useRef("");
 
   useEffect(() => {
@@ -608,8 +626,8 @@ function LoginPage({ onLogin }: LoginPageProps) {
   }, []);
 
   const handleLogin = async () => {
-    if (!username.trim() || !password.trim()) {
-      setError("Username and password are required.");
+    if (!identifier.trim() || !password.trim()) {
+      setError("Username/email and password are required.");
       return;
     }
     setLoading(true);
@@ -618,7 +636,15 @@ function LoginPage({ onLogin }: LoginPageProps) {
       const csrf = await fetchCsrf();
       csrfRef.current = csrf;
 
-      const res = await apiPost("/admin/login/", { username, password }, csrf);
+      const res = await fetch(`${API}/admin/login/`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrf,
+        },
+        body: JSON.stringify({ username: identifier, password }),
+      });
       const data = await res.json();
 
       if (res.ok) {
@@ -627,10 +653,12 @@ function LoginPage({ onLogin }: LoginPageProps) {
         setError((data.error as string) || "Login failed. Please try again.");
       }
     } catch {
-      setError("Could not connect to server. Is Django running on port 8000?");
+      setError("Could not connect to server. Is Django running?");
     }
     setLoading(false);
   };
+
+  const isEmail = identifier.includes("@");
 
   return (
     <div className="login-wrap">
@@ -653,7 +681,7 @@ function LoginPage({ onLogin }: LoginPageProps) {
         </a>
 
         <div className="login-title">Welcome back</div>
-        <div className="login-sub">Sign in to access the claims dashboard</div>
+        <div className="login-sub">Sign in with your username or email address</div>
 
         {error && (
           <div className="login-error">
@@ -662,19 +690,44 @@ function LoginPage({ onLogin }: LoginPageProps) {
           </div>
         )}
 
+        {/* ── Username or Email ── */}
         <div className="fgroup">
-          <label className="flabel">Username</label>
-          <input className="fcontrol" placeholder="admin" value={username}
-            onChange={e => setUsername(e.target.value)}
+          <label className="flabel">{isEmail ? "Email Address" : "Username or Email"}</label>
+          <input
+            className="fcontrol"
+            placeholder="admin or admin@example.com"
+            value={identifier}
+            onChange={e => setIdentifier(e.target.value)}
             onKeyDown={e => e.key === "Enter" && handleLogin()}
-            autoComplete="username" />
+            autoComplete="username"
+            autoCapitalize="none"
+            spellCheck={false}
+          />
         </div>
+
+        {/* ── Password with show/hide ── */}
         <div className="fgroup">
           <label className="flabel">Password</label>
-          <input className="fcontrol" type="password" placeholder="••••••••" value={password}
-            onChange={e => setPassword(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && handleLogin()}
-            autoComplete="current-password" />
+          <div className="pw-wrap">
+            <input
+              className="fcontrol"
+              type={showPw ? "text" : "password"}
+              placeholder="••••••••"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && handleLogin()}
+              autoComplete="current-password"
+            />
+            <button
+              type="button"
+              className="pw-toggle"
+              onClick={() => setShowPw(v => !v)}
+              tabIndex={-1}
+              aria-label={showPw ? "Hide password" : "Show password"}
+            >
+              {showPw ? <Ico.EyeOff /> : <Ico.Eye />}
+            </button>
+          </div>
         </div>
 
         <button className="btn-primary-full" onClick={handleLogin} disabled={loading}>
@@ -814,15 +867,15 @@ function ClaimModal({ claim, onClose, onStatusUpdate, csrfToken }: ClaimModalPro
 // ─── MAIN ADMIN APP ───────────────────────────────────────────────────────────
 export default function AdminPage() {
   // Auth state: null = checking, false = not authed, string = username
-  const [authState, setAuthState]   = useState<string | null | false>(null);
-  const [tab, setTab]               = useState<"dashboard" | "claims">("dashboard");
-  const [claims, setClaims]         = useState<Claim[]>([]);
+  const [authState, setAuthState]         = useState<string | null | false>(null);
+  const [tab, setTab]                     = useState<"dashboard" | "claims">("dashboard");
+  const [claims, setClaims]               = useState<Claim[]>([]);
   const [loadingClaims, setLoadingClaims] = useState(false);
-  const [search, setSearch]         = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [page, setPage]             = useState(1);
-  const [selected, setSelected]     = useState<Claim | null>(null);
-  const [toast, setToast]           = useState<string | null>(null);
+  const [search, setSearch]               = useState("");
+  const [statusFilter, setStatusFilter]   = useState("all");
+  const [page, setPage]                   = useState(1);
+  const [selected, setSelected]           = useState<Claim | null>(null);
+  const [toast, setToast]                 = useState<string | null>(null);
   const csrfRef = useRef("");
 
   useEffect(() => {
@@ -954,7 +1007,7 @@ export default function AdminPage() {
         <aside className="sidebar">
           <div className="sidebar-brand">
             <div className="sidebar-logo-ring">
-              <img src={logo}  alt="HadiFlosCom"
+              <img src={logo} alt="HadiFlosCom"
                 onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
             </div>
             <div className="sidebar-brand-text">

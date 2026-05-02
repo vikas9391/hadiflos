@@ -7,6 +7,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.core.mail import send_mail
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.models import User
 from django.middleware.csrf import get_token
 
 
@@ -121,32 +122,56 @@ class HealthCheckView(APIView):
 
 class AdminLoginView(APIView):
     """
-    POST /api/admin/login/
-    Body: { "username": "...", "password": "..." }
-    Uses Django's session auth — the browser stores the session cookie.
+    GET  /api/admin/login/ — returns CSRF token
+    POST /api/admin/login/ — accepts username OR email + password
     """
     permission_classes = [AllowAny]
 
     def get(self, request):
-        # Return CSRF token so React can read it before POSTing
-        return Response({'csrfToken': get_token(request)})
+        # Force Django to issue/refresh the CSRF cookie and return the token
+        token = get_token(request)
+        return Response({'csrfToken': token})
 
     def post(self, request):
-        username = request.data.get('username', '').strip()
-        password = request.data.get('password', '').strip()
+        identifier = request.data.get('username', '').strip()
+        password   = request.data.get('password', '').strip()
 
-        if not username or not password:
+        if not identifier or not password:
             return Response(
-                {'error': 'Username and password are required.'},
+                {'error': 'Username/email and password are required.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # ── Resolve email → username ──────────────────────────────────────────
+        username = identifier
+        if '@' in identifier:
+            try:
+                user_obj = User.objects.get(email__iexact=identifier)
+                username = user_obj.username
+            except User.DoesNotExist:
+                return Response(
+                    {'error': 'No account found with that email address.'},
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
+            except User.MultipleObjectsReturned:
+                # Multiple accounts share the email — fall back to username auth
+                username = identifier
+
+        # ── Authenticate ──────────────────────────────────────────────────────
         user = authenticate(request, username=username, password=password)
+
         if user is None:
             return Response(
-                {'error': 'Invalid credentials.'},
+                {'error': 'Invalid credentials. Please check your username/email and password.'},
                 status=status.HTTP_401_UNAUTHORIZED
             )
+
+        if not user.is_active:
+            return Response(
+                {'error': 'This account has been disabled.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
         if not user.is_staff:
             return Response(
                 {'error': 'You do not have admin access.'},
@@ -157,6 +182,7 @@ class AdminLoginView(APIView):
         return Response({
             'message': 'Logged in successfully.',
             'username': user.username,
+            'email': user.email,
             'is_staff': user.is_staff,
         })
 
@@ -183,6 +209,7 @@ class AdminSessionView(APIView):
             return Response({
                 'authenticated': True,
                 'username': request.user.username,
+                'email': request.user.email,
             })
         return Response({'authenticated': False}, status=status.HTTP_401_UNAUTHORIZED)
 
@@ -213,8 +240,8 @@ class ClaimListView(generics.ListAPIView):
 
 class ClaimDetailView(generics.RetrieveUpdateAPIView):
     """
-    GET  /api/admin/claims/<id>/  — retrieve a single claim
-    PATCH /api/admin/claims/<id>/ — update status / notes (staff only)
+    GET   /api/admin/claims/<id>/  — retrieve a single claim
+    PATCH /api/admin/claims/<id>/  — update status / notes (staff only)
     """
     serializer_class = ClaimSerializer
     permission_classes = [IsAuthenticated]
