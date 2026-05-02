@@ -10,8 +10,6 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-change-this-in-produc
 
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -25,7 +23,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',  # must be first
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -59,13 +57,6 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
-        # For PostgreSQL in production:
-        # 'ENGINE': 'django.db.backends.postgresql',
-        # 'NAME': os.environ.get('DB_NAME', 'hadifloscom'),
-        # 'USER': os.environ.get('DB_USER', 'postgres'),
-        # 'PASSWORD': os.environ.get('DB_PASSWORD', ''),
-        # 'HOST': os.environ.get('DB_HOST', 'localhost'),
-        # 'PORT': os.environ.get('DB_PORT', '5432'),
     }
 }
 
@@ -107,48 +98,43 @@ REST_FRAMEWORK = {
     },
 }
 
+# ── ALLOWED_HOSTS ──────────────────────────────────────────────────────────────
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    'hadiflos-1.onrender.com',
+]
+
 # ── CORS ───────────────────────────────────────────────────────────────────────
-# Explicit allowlist — required when CORS_ALLOW_CREDENTIALS is True.
-# Never use CORS_ALLOW_ALL_ORIGINS = True together with credentials:
-# browsers reject wildcard (*) + credentials mode = include.
+# Same domain — CORS is not needed, but keep the middleware harmless
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
     'http://localhost:5173',
     'http://127.0.0.1:5173',
+    'https://hadiflos-1.onrender.com',
 ]
-
-# Required so the browser accepts Set-Cookie from Django on cross-origin requests
 CORS_ALLOW_CREDENTIALS = True
 
-# ── Session cookies ────────────────────────────────────────────────────────────
-SESSION_COOKIE_HTTPONLY = True
-SESSION_COOKIE_SAMESITE = 'Lax'   # use 'None' + SESSION_COOKIE_SECURE=True in prod if on different domain
-SESSION_COOKIE_AGE = 28800        # 8 hours
-
 # ── CSRF ───────────────────────────────────────────────────────────────────────
-CSRF_COOKIE_HTTPONLY = False      # JS must be able to read the token to send it as a header
+CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SECURE = not DEBUG
 CSRF_TRUSTED_ORIGINS = [
     'http://localhost:3000',
     'http://localhost:5173',
     'http://127.0.0.1:3000',
     'http://127.0.0.1:5173',
+    'https://hadiflos-1.onrender.com',
 ]
+
+# ── Session ────────────────────────────────────────────────────────────────────
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_AGE = 28800
 
 # ── Email ──────────────────────────────────────────────────────────────────────
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-# For production SMTP:
-# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-# EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
-# EMAIL_PORT = 587
-# EMAIL_USE_TLS = True
-# EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
-# EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
-DEFAULT_FROM_EMAIL = 'HadiFlosCom <contact@hadiflouscom.ma>'
+DEFAULT_FROM_EMAIL = 'HadiFlosCom <vikas93912@gmail.com>'
 ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', 'admin@hadiflouscom.ma')
-
-ALLOWED_HOSTS = ['https://hadiflos-1.onrender.com']
-DEBUG = False
-
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
