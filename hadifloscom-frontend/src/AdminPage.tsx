@@ -904,13 +904,16 @@ export default function AdminPage() {
     setLoadingClaims(true);
     try {
       const res = await apiGet("/admin/claims/");
+      console.log("fetchClaims status:", res.status);
       if (res.status === 401 || res.status === 403) {
+        console.log("Auth failed, going back to login");
         setAuthState(false);
         return;
       }
       const data = await res.json();
       setClaims(Array.isArray(data) ? data : (data.results || []));
     } catch {
+      console.log("fetchClaims error:", e);
       showToast("Could not load claims. Is Django running?");
     }
     setLoadingClaims(false);
