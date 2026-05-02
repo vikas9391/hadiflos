@@ -1328,18 +1328,28 @@ const handleSubmit = async () => {
             <p>Casablanca, Morocco<br />+212 5XX-XXXXXX<br />contact@hadiflouscom.ma<br />Mon – Fri: 9:00 – 18:00 (GMT+1)</p>
           </div>
         </div>
-        <div className="footer-bottom">
-          © 2026 HadiFlosCom. {t.footer.rights}
-          {" · "}
-          <a
-            href="/admin"
-            style={{ color: "rgba(255,255,255,0.2)", textDecoration: "none", fontSize: "0.72rem", transition: "color 0.2s" }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "var(--gold)"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.2)"; }}
-          >
-            Admin
-          </a>
-        </div>
+        {/* Replace the broken footer-bottom div with this */}
+<div className="footer-bottom">
+  © 2026 HadiFlosCom. {t.footer.rights}
+  {" · "}
+  <button
+    onClick={() => window.location.href = '/admin'}
+    style={{
+      color: "rgba(255,255,255,0.2)",
+      background: "none",
+      border: "none",
+      cursor: "pointer",
+      fontSize: "0.72rem",
+      fontFamily: "inherit",
+      padding: 0,
+      transition: "color 0.2s",
+    }}
+    onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--gold)"; }}
+    onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "rgba(255,255,255,0.2)"; }}
+  >
+    Admin
+  </button>
+</div>
       </footer>
 
       {/* WHATSAPP FLOAT */}
