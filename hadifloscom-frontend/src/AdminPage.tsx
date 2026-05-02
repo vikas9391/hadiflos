@@ -535,42 +535,44 @@ function fmtDate(d: string | Date) {
   return new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 }
 
+// ─── TOKEN HELPERS ────────────────────────────────────────────────────────────
+function getToken(): string {
+  return localStorage.getItem("admin_token") || "";
+}
+function setToken(t: string) {
+  localStorage.setItem("admin_token", t);
+}
+function clearToken() {
+  localStorage.removeItem("admin_token");
+}
+
 // ─── API HELPERS ──────────────────────────────────────────────────────────────
-function getCookieCsrf(): string {
-  const match = document.cookie.match(/csrftoken=([^;]+)/);
-  return match ? match[1] : "";
+async function apiGet(path: string) {
+  return fetch(`${API}${path}`, {
+    headers: {
+      "Authorization": `Bearer ${getToken()}`,
+      "Content-Type": "application/json",
+    },
+  });
 }
 
-async function fetchCsrf(): Promise<string> {
-  try {
-    const r = await fetch(`${API}/admin/login/`, { credentials: "include" });
-    const data = await r.json();
-    return getCookieCsrf() || (data.csrfToken as string) || "";
-  } catch {
-    return getCookieCsrf() || "";
-  }
-}
-
-async function apiPost(path: string, body: unknown, csrfToken: string) {
+async function apiPost(path: string, body: unknown) {
   return fetch(`${API}${path}`, {
     method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
 }
 
-async function apiPatch(path: string, body: unknown, csrfToken: string) {
+async function apiPatch(path: string, body: unknown) {
   return fetch(`${API}${path}`, {
     method: "PATCH",
-    credentials: "include",
-    headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken },
+    headers: {
+      "Authorization": `Bearer ${getToken()}`,
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify(body),
   });
-}
-
-async function apiGet(path: string) {
-  return fetch(`${API}${path}`, { credentials: "include" });
 }
 
 // ─── STATUS BADGE ─────────────────────────────────────────────────────────────
@@ -584,9 +586,8 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 // ─── LOGIN PAGE ───────────────────────────────────────────────────────────────
-// ✅ FIX: onLogin now receives both username and the csrf token
 interface LoginPageProps {
-  onLogin: (username: string, csrf: string) => void;
+  onLogin: (username: string) => void;
 }
 
 function LoginPage({ onLogin }: LoginPageProps) {
@@ -595,12 +596,6 @@ function LoginPage({ onLogin }: LoginPageProps) {
   const [showPw, setShowPw]         = useState(false);
   const [error, setError]           = useState("");
   const [loading, setLoading]       = useState(false);
-  const csrfRef = useRef("");
-
-  // Fetch CSRF once on mount — also wakes up the Render backend
-  useEffect(() => {
-    fetchCsrf().then(t => { csrfRef.current = t; });
-  }, []);
 
   const handleLogin = async () => {
     if (!identifier.trim() || !password.trim()) {
@@ -610,20 +605,15 @@ function LoginPage({ onLogin }: LoginPageProps) {
     setLoading(true);
     setError("");
     try {
-      // ✅ FIX: use the csrf fetched on mount, don't fetch again
       const res = await fetch(`${API}/admin/login/`, {
         method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRFToken": csrfRef.current,
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username: identifier, password }),
       });
       const data = await res.json();
       if (res.ok) {
-        // ✅ FIX: pass the existing csrf up — no extra fetchCsrf() call after login
-        onLogin(data.username as string, csrfRef.current);
+        setToken(data.access as string);
+        onLogin(data.username as string);
       } else {
         setError((data.error as string) || "Login failed. Please try again.");
       }
@@ -719,17 +709,16 @@ interface ClaimModalProps {
   claim: Claim;
   onClose: () => void;
   onStatusUpdate: (id: number, status: string) => void;
-  csrfToken: string;
 }
 
-function ClaimModal({ claim, onClose, onStatusUpdate, csrfToken }: ClaimModalProps) {
+function ClaimModal({ claim, onClose, onStatusUpdate }: ClaimModalProps) {
   const [status, setStatus] = useState(claim.status);
   const [saving, setSaving] = useState(false);
 
   const handleUpdate = async () => {
     setSaving(true);
     try {
-      const res = await apiPatch(`/admin/claims/${claim.id}/`, { status }, csrfToken);
+      const res = await apiPatch(`/admin/claims/${claim.id}/`, { status });
       if (res.ok) {
         onStatusUpdate(claim.id, status);
         onClose();
@@ -822,22 +811,26 @@ export default function AdminPage() {
   const [page, setPage]                   = useState(1);
   const [selected, setSelected]           = useState<Claim | null>(null);
   const [toast, setToast]                 = useState<string | null>(null);
-  const csrfRef = useRef("");
 
-  // ✅ FIX: session check on mount — does NOT kick user to login on network error
+  // Check token on mount
   useEffect(() => {
     (async () => {
+      const token = getToken();
+      if (!token) {
+        setAuthState(false);
+        return;
+      }
       try {
         const res = await apiGet("/admin/session/");
         const data = await res.json();
         if (data.authenticated) {
           setAuthState(data.username as string);
-          csrfRef.current = getCookieCsrf();
         } else {
+          clearToken();
           setAuthState(false);
         }
       } catch {
-        // Network error (e.g. Render cold start) — show login, don't crash
+        // Keep token, just show login on network error
         setAuthState(false);
       }
     })();
@@ -851,8 +844,8 @@ export default function AdminPage() {
     setLoadingClaims(true);
     try {
       const res = await apiGet("/admin/claims/");
-      // ✅ FIX: don't kick to login on claims failure — show toast instead
-      if (res.status === 401 || res.status === 403) {
+      if (res.status === 401) {
+        clearToken();
         showToast("Session expired. Please log in again.");
         setAuthState(false);
         setLoadingClaims(false);
@@ -871,16 +864,12 @@ export default function AdminPage() {
     setLoadingClaims(false);
   };
 
-  // ✅ FIX: accept csrf from LoginPage — no extra fetchCsrf() call
-  const handleLogin = (username: string, csrf: string) => {
-    csrfRef.current = csrf;
+  const handleLogin = (username: string) => {
     setAuthState(username);
   };
 
-  const handleLogout = async () => {
-    try {
-      await apiPost("/admin/logout/", {}, csrfRef.current);
-    } catch (_) {}
+  const handleLogout = () => {
+    clearToken();
     setAuthState(false);
     setClaims([]);
   };
@@ -953,7 +942,6 @@ export default function AdminPage() {
           claim={selected}
           onClose={() => setSelected(null)}
           onStatusUpdate={handleStatusUpdate}
-          csrfToken={csrfRef.current}
         />
       )}
 

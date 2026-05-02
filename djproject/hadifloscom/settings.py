@@ -2,6 +2,7 @@
 Django settings for HadiFlosCom – Debt Recovery Platform
 """
 from pathlib import Path
+from datetime import timedelta
 import os
 import dj_database_url
 
@@ -20,6 +21,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'rest_framework_simplejwt',
     'corsheaders',
     'claims',
 ]
@@ -83,7 +85,6 @@ MEDIA_ROOT = BASE_DIR / 'media'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ── Render HTTPS proxy ─────────────────────────────────────────────────────────
-# Tells Django it's behind an HTTPS proxy — critical for Secure cookies to work
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # ── ALLOWED_HOSTS ──────────────────────────────────────────────────────────────
@@ -100,7 +101,7 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.AllowAny',
     ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',
@@ -111,6 +112,16 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'anon': '20/hour',
     },
+}
+
+# ── Simple JWT ─────────────────────────────────────────────────────────────────
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=8),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ROTATE_REFRESH_TOKENS': False,
+    'BLACKLIST_AFTER_ROTATION': False,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
 }
 
 # ── CORS ───────────────────────────────────────────────────────────────────────
@@ -142,19 +153,19 @@ CSRF_TRUSTED_ORIGINS = [
     'http://127.0.0.1:5173',
     'https://hadiflos-1.onrender.com',
 ]
-CSRF_COOKIE_HTTPONLY = False   # Must be False so JS can read it
-CSRF_COOKIE_SAMESITE = 'None'  # Required for cross-origin requests
-CSRF_COOKIE_SECURE = True      # Required when SameSite=None
+CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_SAMESITE = 'None'
+CSRF_COOKIE_SECURE = True
 CSRF_COOKIE_NAME = 'csrftoken'
 
-# ── Session ────────────────────────────────────────────────────────────────────
+# ── Session (kept for Django admin panel) ──────────────────────────────────────
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 SESSION_COOKIE_HTTPONLY = True
-SESSION_COOKIE_SAMESITE = 'None'  # Required for cross-origin requests
-SESSION_COOKIE_SECURE = True      # Required when SameSite=None
-SESSION_COOKIE_AGE = 28800        # 8 hours
+SESSION_COOKIE_SAMESITE = 'None'
+SESSION_COOKIE_SECURE = True
+SESSION_COOKIE_AGE = 28800
 SESSION_COOKIE_NAME = 'sessionid'
-SESSION_COOKIE_DOMAIN = None      # Let the browser handle it
+SESSION_COOKIE_DOMAIN = None
 
 # ── Email ──────────────────────────────────────────────────────────────────────
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

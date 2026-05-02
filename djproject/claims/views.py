@@ -3,18 +3,36 @@ from .serializers import ClaimSerializer, ClaimStatusSerializer, ContactMessageS
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import AllowAny
+from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 from django.core.mail import send_mail
 from django.conf import settings
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.middleware.csrf import get_token
+
+
+def verify_admin_token(request):
+    """Returns (user, error_response) — error_response is None if valid."""
+    auth_header = request.headers.get('Authorization', '')
+    if not auth_header.startswith('Bearer '):
+        return None, Response({'error': 'Authentication required.'}, status=status.HTTP_401_UNAUTHORIZED)
+    token_str = auth_header.split(' ')[1]
+    try:
+        access_token = AccessToken(token_str)
+        user = User.objects.get(id=access_token['user_id'])
+        if not user.is_active:
+            return None, Response({'error': 'Account disabled.'}, status=status.HTTP_403_FORBIDDEN)
+        if not user.is_staff:
+            return None, Response({'error': 'Admin access required.'}, status=status.HTTP_403_FORBIDDEN)
+        return user, None
+    except Exception:
+        return None, Response({'error': 'Invalid or expired token.'}, status=status.HTTP_401_UNAUTHORIZED)
 
 
 # ─── PUBLIC ENDPOINTS ─────────────────────────────────────────────────────────
 
 class ClaimCreateView(generics.CreateAPIView):
-    """POST /api/claims/ — submit a new claim (public)."""
     queryset = Claim.objects.all()
     serializer_class = ClaimSerializer
     permission_classes = [AllowAny]
@@ -79,7 +97,6 @@ class ClaimCreateView(generics.CreateAPIView):
 
 
 class ClaimStatusView(APIView):
-    """GET /api/claims/status/<reference_number>/ — public claim tracker."""
     permission_classes = [AllowAny]
 
     def get(self, request, reference_number):
@@ -95,7 +112,6 @@ class ClaimStatusView(APIView):
 
 
 class ContactMessageCreateView(generics.CreateAPIView):
-    """POST /api/contact/ — general contact message (public)."""
     queryset = ContactMessage.objects.all()
     serializer_class = ContactMessageSerializer
     permission_classes = [AllowAny]
@@ -111,24 +127,18 @@ class ContactMessageCreateView(generics.CreateAPIView):
 
 
 class HealthCheckView(APIView):
-    """GET /api/health/ — uptime probe."""
     permission_classes = [AllowAny]
 
     def get(self, request):
         return Response({'status': 'ok', 'service': 'HadiFlosCom API'})
 
 
-# ─── AUTH ENDPOINTS (used by React admin panel) ───────────────────────────────
+# ─── AUTH ENDPOINTS ───────────────────────────────────────────────────────────
 
 class AdminLoginView(APIView):
-    """
-    GET  /api/admin/login/ — returns CSRF token
-    POST /api/admin/login/ — accepts username OR email + password
-    """
     permission_classes = [AllowAny]
 
     def get(self, request):
-        # Force Django to issue/refresh the CSRF cookie and return the token
         token = get_token(request)
         return Response({'csrfToken': token})
 
@@ -142,7 +152,6 @@ class AdminLoginView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # ── Resolve email → username ──────────────────────────────────────────
         username = identifier
         if '@' in identifier:
             try:
@@ -154,10 +163,8 @@ class AdminLoginView(APIView):
                     status=status.HTTP_401_UNAUTHORIZED
                 )
             except User.MultipleObjectsReturned:
-                # Multiple accounts share the email — fall back to username auth
                 username = identifier
 
-        # ── Authenticate ──────────────────────────────────────────────────────
         user = authenticate(request, username=username, password=password)
 
         if user is None:
@@ -165,93 +172,73 @@ class AdminLoginView(APIView):
                 {'error': 'Invalid credentials. Please check your username/email and password.'},
                 status=status.HTTP_401_UNAUTHORIZED
             )
-
         if not user.is_active:
             return Response(
                 {'error': 'This account has been disabled.'},
                 status=status.HTTP_403_FORBIDDEN
             )
-
         if not user.is_staff:
             return Response(
                 {'error': 'You do not have admin access.'},
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        login(request, user)
+        refresh = RefreshToken.for_user(user)
         return Response({
             'message': 'Logged in successfully.',
             'username': user.username,
             'email': user.email,
             'is_staff': user.is_staff,
+            'access': str(refresh.access_token),
+            'refresh': str(refresh),
         })
 
 
 class AdminLogoutView(APIView):
-    """POST /api/admin/logout/"""
     permission_classes = [AllowAny]
 
     def post(self, request):
-        logout(request)
         return Response({'message': 'Logged out.'})
 
 
 class AdminSessionView(APIView):
-    """
-    GET /api/admin/session/
-    Returns current auth state — React calls this on page load
-    to check if the session cookie is still valid.
-    """
     permission_classes = [AllowAny]
 
     def get(self, request):
-        if request.user.is_authenticated and request.user.is_staff:
-            return Response({
-                'authenticated': True,
-                'username': request.user.username,
-                'email': request.user.email,
-            })
-        return Response({'authenticated': False}, status=status.HTTP_401_UNAUTHORIZED)
+        user, error = verify_admin_token(request)
+        if error:
+            return Response({'authenticated': False}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response({
+            'authenticated': True,
+            'username': user.username,
+            'email': user.email,
+        })
 
 
 # ─── PROTECTED ADMIN ENDPOINTS ────────────────────────────────────────────────
 
 class ClaimListView(generics.ListAPIView):
-    """
-    GET /api/admin/claims/
-    Returns all claims — requires Django session login (is_staff).
-    """
     serializer_class = ClaimSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def get_queryset(self):
-        if not self.request.user.is_staff:
-            return Claim.objects.none()
         return Claim.objects.all().order_by('-created_at')
 
     def list(self, request, *args, **kwargs):
-        if not request.user.is_staff:
-            return Response(
-                {'error': 'Admin access required.'},
-                status=status.HTTP_403_FORBIDDEN
-            )
+        user, error = verify_admin_token(request)
+        if error:
+            return error
         return super().list(request, *args, **kwargs)
 
 
 class ClaimDetailView(generics.RetrieveUpdateAPIView):
-    """
-    GET   /api/admin/claims/<id>/  — retrieve a single claim
-    PATCH /api/admin/claims/<id>/  — update status / notes (staff only)
-    """
     serializer_class = ClaimSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
     queryset = Claim.objects.all()
 
     def update(self, request, *args, **kwargs):
-        if not request.user.is_staff:
-            return Response(
-                {'error': 'Admin access required.'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        kwargs['partial'] = True  # always partial — only send what changed
+        user, error = verify_admin_token(request)
+        if error:
+            return error
+        kwargs['partial'] = True
         return super().update(request, *args, **kwargs)
