@@ -25,7 +25,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',  # ← MUST be first
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -82,6 +82,18 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# ── Render HTTPS proxy ─────────────────────────────────────────────────────────
+# Tells Django it's behind an HTTPS proxy — critical for Secure cookies to work
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# ── ALLOWED_HOSTS ──────────────────────────────────────────────────────────────
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    'hadiflos.onrender.com',
+    'hadiflos-1.onrender.com',
+]
+
 # ── Django REST Framework ──────────────────────────────────────────────────────
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
@@ -101,44 +113,48 @@ REST_FRAMEWORK = {
     },
 }
 
+# ── CORS ───────────────────────────────────────────────────────────────────────
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
     'http://localhost:5173',
     'http://127.0.0.1:5173',
-    'https://hadiflos-1.onrender.com',  # frontend
+    'https://hadiflos-1.onrender.com',
+]
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
 ]
 
+# ── CSRF ───────────────────────────────────────────────────────────────────────
 CSRF_TRUSTED_ORIGINS = [
     'http://localhost:3000',
     'http://localhost:5173',
     'http://127.0.0.1:3000',
     'http://127.0.0.1:5173',
-    'https://hadiflos-1.onrender.com',  # frontend
+    'https://hadiflos-1.onrender.com',
 ]
+CSRF_COOKIE_HTTPONLY = False   # Must be False so JS can read it
+CSRF_COOKIE_SAMESITE = 'None'  # Required for cross-origin requests
+CSRF_COOKIE_SECURE = True      # Required when SameSite=None
+CSRF_COOKIE_NAME = 'csrftoken'
 
 # ── Session ────────────────────────────────────────────────────────────────────
-SESSION_COOKIE_HTTPONLY = True
-SESSION_COOKIE_SAMESITE = 'None'
-SESSION_COOKIE_SECURE = True
-SESSION_COOKIE_AGE = 28800
-
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
-
-# ── CSRF ───────────────────────────────────────────────────────────────────────
-CSRF_COOKIE_HTTPONLY = False
-CSRF_COOKIE_SAMESITE = 'None'
-CSRF_COOKIE_SECURE = True
-
-CORS_ALLOW_CREDENTIALS = True  # ← THIS IS THE CRITICAL MISSING LINE
-
-ALLOWED_HOSTS = [
-    'localhost',
-    '127.0.0.1',
-    'hadiflos.onrender.com',   # backend only — no https://
-]
-
-
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'None'  # Required for cross-origin requests
+SESSION_COOKIE_SECURE = True      # Required when SameSite=None
+SESSION_COOKIE_AGE = 28800        # 8 hours
+SESSION_COOKIE_NAME = 'sessionid'
+SESSION_COOKIE_DOMAIN = None      # Let the browser handle it
 
 # ── Email ──────────────────────────────────────────────────────────────────────
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
