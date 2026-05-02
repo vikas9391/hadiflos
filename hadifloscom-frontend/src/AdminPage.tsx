@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import logo from "./assets/logo.png";
 
 interface Claim {
@@ -556,13 +556,6 @@ async function apiGet(path: string) {
   });
 }
 
-async function apiPost(path: string, body: unknown) {
-  return fetch(`${API}${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-}
 
 async function apiPatch(path: string, body: unknown) {
   return fetch(`${API}${path}`, {
