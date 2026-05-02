@@ -953,35 +953,56 @@ export default function App() {
     setTimeout(() => setToast(null), 4000);
   };
 
-  const handleSubmit = async () => {
-    if (!form.agreed) { showToast(t.contact.agreeReq); return; }
-    if (!form.name || !form.email || !form.phone || !form.debtorName || !form.debtorLocation || !form.amount || !form.debtType || !form.description) {
-      showToast(t.contact.req); return;
+const debtTypeMap: Record<string, string> = {
+  "Commercial Debt": "commercial",
+  "Invoice Unpaid": "invoice",
+  "Loan Default": "loan",
+  "Lease / Rent": "lease",
+  "Other": "other",
+  "Créance Commerciale": "commercial",
+  "Facture Impayée": "invoice",
+  "Défaut de Remboursement": "loan",
+  "Loyer / Bail": "lease",
+  "Autre": "other",
+  "دين تجاري": "commercial",
+  "فاتورة غير مسددة": "invoice",
+  "تخلف عن السداد": "loan",
+  "إيجار / عقد": "lease",
+  "أخرى": "other",
+};
+
+const handleSubmit = async () => {
+  if (!form.agreed) { showToast(t.contact.agreeReq); return; }
+  if (!form.name || !form.email || !form.phone || !form.debtorName || !form.debtorLocation || !form.amount || !form.debtType || !form.description) {
+    showToast(t.contact.req); return;
+  }
+  try {
+    const res = await fetch("https://hadiflos.onrender.com/api/claims/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        full_name: form.name,
+        company_name: form.company || "",
+        email: form.email,
+        phone: form.phone,
+        debtor_name: form.debtorName,
+        debtor_location: form.debtorLocation,
+        amount_owed: parseFloat(form.amount),
+        debt_type: debtTypeMap[form.debtType] || "other",
+        description: form.description,
+        preferred_language: lang.toLowerCase(),
+      }),
+    });
+    const data = await res.json();
+    if (res.ok) { setSubmitted(true); showToast("✓ " + (data.reference_number || "")); }
+    else {
+      const firstErr = Object.values(data)[0];
+      showToast(Array.isArray(firstErr) ? (firstErr[0] as string) : (firstErr as string));
     }
-    try {
-      const res = await fetch("https://hadiflos.onrender.com/api/claims/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          full_name: form.name, company_name: form.company || "",
-          email: form.email, phone: form.phone,
-          debtor_name: form.debtorName, debtor_location: form.debtorLocation,
-          amount_owed: parseFloat(form.amount),
-          debt_type: form.debtType,
-          description: form.description,
-          preferred_language: lang.toLowerCase(),
-        }),
-      });
-      const data = await res.json();
-      if (res.ok) { setSubmitted(true); showToast("✓ " + (data.reference_number || "")); }
-      else {
-        const firstErr = Object.values(data)[0];
-        showToast(Array.isArray(firstErr) ? (firstErr[0] as string) : (firstErr as string));
-      }
-    } catch {
-      showToast("Cannot reach server. Is Django running?");
-    }
-  };
+  } catch {
+    showToast("Cannot reach server. Is Django running?");
+  }
+};
 
   const navSections: [string, string][] = [
     ["home","nav.home"],["services","nav.services"],["process","nav.process"],
