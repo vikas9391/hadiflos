@@ -959,7 +959,7 @@ export default function App() {
       showToast(t.contact.req); return;
     }
     try {
-      const res = await fetch("https://hadiflos-1.onrender.com/api/claims/", {
+      const res = await fetch("https://hadiflos.onrender.com/api/claims/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
