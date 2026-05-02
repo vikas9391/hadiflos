@@ -20,7 +20,6 @@ interface Claim {
 
 const API = "https://hadiflos.onrender.com/api";
 
-// ─── STYLES ───────────────────────────────────────────────────────────────────
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500;600&display=swap');
 
@@ -55,7 +54,6 @@ const styles = `
 
   html, body { height: 100%; font-family: 'DM Sans', sans-serif; color: var(--text); background: var(--off-white); }
 
-  /* ── LOGIN ── */
   .login-wrap {
     min-height: 100vh;
     display: flex; align-items: center; justify-content: center;
@@ -88,9 +86,7 @@ const styles = `
     box-shadow: 0 0 0 6px rgba(184,134,11,0.12), 0 8px 24px rgba(184,134,11,0.3);
     margin-bottom: 0.25rem;
   }
-  .login-logo-mark img {
-    width: 72px; height: 72px; border-radius: 50%; object-fit: cover;
-  }
+  .login-logo-mark img { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; }
   .login-logo h1 {
     font-family: 'Cormorant Garamond', serif;
     font-size: 1.6rem; font-weight: 700; color: var(--dark); line-height: 1.1;
@@ -124,7 +120,6 @@ const styles = `
   }
   .fcontrol:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(184,134,11,0.1); background: white; }
 
-  /* Password field with show/hide toggle */
   .pw-wrap { position: relative; }
   .pw-wrap .fcontrol { padding-right: 2.75rem; }
   .pw-toggle {
@@ -155,17 +150,8 @@ const styles = `
   }
   .login-error svg { flex-shrink: 0; margin-top: 1px; }
 
-  .tries-badge {
-    display: inline-block; background: var(--gold-pale); color: var(--gold-mid);
-    border: 1px solid var(--border-gold);
-    border-radius: 4px; padding: 0.2rem 0.625rem;
-    font-size: 0.72rem; font-weight: 600; margin-top: 0.5rem; margin-bottom: 0.75rem; display: block;
-  }
-
-  /* ── LAYOUT ── */
   .admin-wrap { display: flex; min-height: 100vh; }
 
-  /* SIDEBAR */
   .sidebar {
     width: var(--sidebar-w); background: var(--dark-2); flex-shrink: 0;
     display: flex; flex-direction: column;
@@ -201,8 +187,7 @@ const styles = `
     color: rgba(255,255,255,0.42); font-size: 0.84rem; font-weight: 500;
     transition: all 0.15s; border: none; background: none;
     width: 100%; text-align: left; font-family: inherit;
-    border-left: 2px solid transparent;
-    letter-spacing: 0.01em;
+    border-left: 2px solid transparent; letter-spacing: 0.01em;
   }
   .sidebar-link svg { width: 15px; height: 15px; flex-shrink: 0; }
   .sidebar-link:hover { color: rgba(255,255,255,0.75); background: rgba(255,255,255,0.03); }
@@ -232,11 +217,9 @@ const styles = `
   .btn-logout:hover { background: rgba(220,38,38,0.15); color: #FCA5A5; }
   .btn-logout svg { width: 14px; height: 14px; }
 
-  /* MAIN */
   .main { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
   .topbar {
-    background: rgba(255,255,255,0.97);
-    backdrop-filter: blur(16px);
+    background: rgba(255,255,255,0.97); backdrop-filter: blur(16px);
     border-bottom: 1px solid var(--border);
     padding: 0 2.25rem; height: 64px;
     display: flex; align-items: center; justify-content: space-between;
@@ -255,7 +238,6 @@ const styles = `
   .admin-dot { width: 6px; height: 6px; border-radius: 50%; background: #22C55E; box-shadow: 0 0 0 2px rgba(34,197,94,0.2); }
   .page-content { padding: 2.25rem; flex: 1; }
 
-  /* STAT CARDS */
   .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.25rem; margin-bottom: 2rem; }
   .stat-card {
     background: white; border-radius: var(--radius-lg);
@@ -283,7 +265,6 @@ const styles = `
   .si-blue { background: #EFF6FF; color: var(--blue); }
   .si-amber { background: #FFFBEB; color: var(--amber); }
 
-  /* CARDS / TABLE */
   .card { background: white; border-radius: var(--radius-lg); border: 1px solid var(--border); overflow: hidden; margin-bottom: 1.5rem; box-shadow: 0 1px 8px rgba(0,0,0,0.03); }
   .card-header {
     padding: 1.375rem 1.75rem; border-bottom: 1px solid var(--border);
@@ -574,10 +555,7 @@ async function apiPost(path: string, body: unknown, csrfToken: string) {
   return fetch(`${API}${path}`, {
     method: "POST",
     credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRFToken": csrfToken,
-    },
+    headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken },
     body: JSON.stringify(body),
   });
 }
@@ -586,10 +564,7 @@ async function apiPatch(path: string, body: unknown, csrfToken: string) {
   return fetch(`${API}${path}`, {
     method: "PATCH",
     credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRFToken": csrfToken,
-    },
+    headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken },
     body: JSON.stringify(body),
   });
 }
@@ -609,18 +584,20 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 // ─── LOGIN PAGE ───────────────────────────────────────────────────────────────
+// ✅ FIX: onLogin now receives both username and the csrf token
 interface LoginPageProps {
-  onLogin: (username: string) => void;
+  onLogin: (username: string, csrf: string) => void;
 }
 
 function LoginPage({ onLogin }: LoginPageProps) {
-  const [identifier, setIdentifier] = useState("");  // accepts username OR email
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword]     = useState("");
   const [showPw, setShowPw]         = useState(false);
   const [error, setError]           = useState("");
   const [loading, setLoading]       = useState(false);
   const csrfRef = useRef("");
 
+  // Fetch CSRF once on mount — also wakes up the Render backend
   useEffect(() => {
     fetchCsrf().then(t => { csrfRef.current = t; });
   }, []);
@@ -633,27 +610,25 @@ function LoginPage({ onLogin }: LoginPageProps) {
     setLoading(true);
     setError("");
     try {
-      const csrf = await fetchCsrf();
-      csrfRef.current = csrf;
-
+      // ✅ FIX: use the csrf fetched on mount, don't fetch again
       const res = await fetch(`${API}/admin/login/`, {
         method: "POST",
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
-          "X-CSRFToken": csrf,
+          "X-CSRFToken": csrfRef.current,
         },
         body: JSON.stringify({ username: identifier, password }),
       });
       const data = await res.json();
-
       if (res.ok) {
-        onLogin(data.username as string);
+        // ✅ FIX: pass the existing csrf up — no extra fetchCsrf() call after login
+        onLogin(data.username as string, csrfRef.current);
       } else {
         setError((data.error as string) || "Login failed. Please try again.");
       }
     } catch {
-      setError("Could not connect to server. Is Django running?");
+      setError("Could not connect to server.");
     }
     setLoading(false);
   };
@@ -690,7 +665,6 @@ function LoginPage({ onLogin }: LoginPageProps) {
           </div>
         )}
 
-        {/* ── Username or Email ── */}
         <div className="fgroup">
           <label className="flabel">{isEmail ? "Email Address" : "Username or Email"}</label>
           <input
@@ -705,7 +679,6 @@ function LoginPage({ onLogin }: LoginPageProps) {
           />
         </div>
 
-        {/* ── Password with show/hide ── */}
         <div className="fgroup">
           <label className="flabel">Password</label>
           <div className="pw-wrap">
@@ -731,7 +704,10 @@ function LoginPage({ onLogin }: LoginPageProps) {
         </div>
 
         <button className="btn-primary-full" onClick={handleLogin} disabled={loading}>
-          {loading ? <><span className="spin" style={{ width: 16, height: 16, borderWidth: 2 }} /> Signing in…</> : "Sign In"}
+          {loading
+            ? <><span className="spin" style={{ width: 16, height: 16, borderWidth: 2 }} /> Signing in…</>
+            : "Sign In"
+          }
         </button>
       </div>
     </div>
@@ -777,54 +753,25 @@ function ClaimModal({ claim, onClose, onStatusUpdate, csrfToken }: ClaimModalPro
         <div className="modal-body">
           <div className="modal-section-label">Claimant Information</div>
           <div className="detail-grid">
-            <div>
-              <div className="detail-lbl">Full Name</div>
-              <div className="detail-val">{claim.full_name}</div>
-            </div>
-            <div>
-              <div className="detail-lbl">Company</div>
-              <div className="detail-val">{claim.company_name || "—"}</div>
-            </div>
-            <div>
-              <div className="detail-lbl">Email</div>
-              <div className="detail-val">{claim.email}</div>
-            </div>
-            <div>
-              <div className="detail-lbl">Phone</div>
-              <div className="detail-val">{claim.phone}</div>
-            </div>
-            <div>
-              <div className="detail-lbl">Language</div>
-              <div className="detail-val">{claim.preferred_language?.toUpperCase() || "—"}</div>
-            </div>
-            <div>
-              <div className="detail-lbl">Status</div>
-              <div className="detail-val"><StatusBadge status={claim.status} /></div>
-            </div>
+            <div><div className="detail-lbl">Full Name</div><div className="detail-val">{claim.full_name}</div></div>
+            <div><div className="detail-lbl">Company</div><div className="detail-val">{claim.company_name || "—"}</div></div>
+            <div><div className="detail-lbl">Email</div><div className="detail-val">{claim.email}</div></div>
+            <div><div className="detail-lbl">Phone</div><div className="detail-val">{claim.phone}</div></div>
+            <div><div className="detail-lbl">Language</div><div className="detail-val">{claim.preferred_language?.toUpperCase() || "—"}</div></div>
+            <div><div className="detail-lbl">Status</div><div className="detail-val"><StatusBadge status={claim.status} /></div></div>
           </div>
 
           <div className="divider" />
 
           <div className="modal-section-label">Debt Details</div>
           <div className="detail-grid">
-            <div>
-              <div className="detail-lbl">Debtor Name</div>
-              <div className="detail-val">{claim.debtor_name}</div>
-            </div>
-            <div>
-              <div className="detail-lbl">Debtor Location</div>
-              <div className="detail-val">{claim.debtor_location}</div>
-            </div>
-            <div>
-              <div className="detail-lbl">Amount Owed</div>
-              <div className="detail-val gold">{fmt(claim.amount_owed)}</div>
-            </div>
+            <div><div className="detail-lbl">Debtor Name</div><div className="detail-val">{claim.debtor_name}</div></div>
+            <div><div className="detail-lbl">Debtor Location</div><div className="detail-val">{claim.debtor_location}</div></div>
+            <div><div className="detail-lbl">Amount Owed</div><div className="detail-val gold">{fmt(claim.amount_owed)}</div></div>
             <div>
               <div className="detail-lbl">Debt Type</div>
               <div className="detail-val">
-                <span className="tag">
-                  {DEBT_TYPE_LABELS[claim.debt_type as keyof typeof DEBT_TYPE_LABELS] || claim.debt_type}
-                </span>
+                <span className="tag">{DEBT_TYPE_LABELS[claim.debt_type as keyof typeof DEBT_TYPE_LABELS] || claim.debt_type}</span>
               </div>
             </div>
           </div>
@@ -866,7 +813,6 @@ function ClaimModal({ claim, onClose, onStatusUpdate, csrfToken }: ClaimModalPro
 
 // ─── MAIN ADMIN APP ───────────────────────────────────────────────────────────
 export default function AdminPage() {
-  // Auth state: null = checking, false = not authed, string = username
   const [authState, setAuthState]         = useState<string | null | false>(null);
   const [tab, setTab]                     = useState<"dashboard" | "claims">("dashboard");
   const [claims, setClaims]               = useState<Claim[]>([]);
@@ -878,6 +824,7 @@ export default function AdminPage() {
   const [toast, setToast]                 = useState<string | null>(null);
   const csrfRef = useRef("");
 
+  // ✅ FIX: session check on mount — does NOT kick user to login on network error
   useEffect(() => {
     (async () => {
       try {
@@ -885,12 +832,12 @@ export default function AdminPage() {
         const data = await res.json();
         if (data.authenticated) {
           setAuthState(data.username as string);
-          const csrf = await fetchCsrf();
-          csrfRef.current = csrf;
+          csrfRef.current = getCookieCsrf();
         } else {
           setAuthState(false);
         }
       } catch {
+        // Network error (e.g. Render cold start) — show login, don't crash
         setAuthState(false);
       }
     })();
@@ -904,25 +851,30 @@ export default function AdminPage() {
     setLoadingClaims(true);
     try {
       const res = await apiGet("/admin/claims/");
-      console.log("fetchClaims status:", res.status);
+      // ✅ FIX: don't kick to login on claims failure — show toast instead
       if (res.status === 401 || res.status === 403) {
-        console.log("Auth failed, going back to login");
+        showToast("Session expired. Please log in again.");
         setAuthState(false);
+        setLoadingClaims(false);
+        return;
+      }
+      if (!res.ok) {
+        showToast("Could not load claims — server error.");
+        setLoadingClaims(false);
         return;
       }
       const data = await res.json();
       setClaims(Array.isArray(data) ? data : (data.results || []));
     } catch {
-      console.log("fetchClaims error:", e);
-      showToast("Could not load claims. Is Django running?");
+      showToast("Could not reach server. Try refreshing.");
     }
     setLoadingClaims(false);
   };
 
-  const handleLogin = async (username: string) => {
-    setAuthState(username);
-    const csrf = await fetchCsrf();
+  // ✅ FIX: accept csrf from LoginPage — no extra fetchCsrf() call
+  const handleLogin = (username: string, csrf: string) => {
     csrfRef.current = csrf;
+    setAuthState(username);
   };
 
   const handleLogout = async () => {
@@ -983,8 +935,8 @@ export default function AdminPage() {
   }
 
   const navItems = [
-    { id: "dashboard" as const, label: "Dashboard",  icon: <Ico.Dashboard /> },
-    { id: "claims"    as const, label: "All Claims",  icon: <Ico.Claims />   },
+    { id: "dashboard" as const, label: "Dashboard", icon: <Ico.Dashboard /> },
+    { id: "claims"    as const, label: "All Claims", icon: <Ico.Claims />   },
   ];
 
   const topbarTitles: Record<"dashboard" | "claims", string> = {
@@ -1006,7 +958,6 @@ export default function AdminPage() {
       )}
 
       <div className="admin-wrap">
-        {/* SIDEBAR */}
         <aside className="sidebar">
           <div className="sidebar-brand">
             <div className="sidebar-logo-ring">
@@ -1046,7 +997,6 @@ export default function AdminPage() {
           </div>
         </aside>
 
-        {/* MAIN */}
         <main className="main">
           <div className="topbar">
             <div>
@@ -1062,7 +1012,6 @@ export default function AdminPage() {
 
           <div className="page-content">
 
-            {/* ── DASHBOARD ── */}
             {tab === "dashboard" && (
               <>
                 <div className="stat-grid">
@@ -1129,13 +1078,8 @@ export default function AdminPage() {
                     <table>
                       <thead>
                         <tr>
-                          <th>Reference</th>
-                          <th>Claimant</th>
-                          <th>Debtor</th>
-                          <th>Amount</th>
-                          <th>Status</th>
-                          <th>Date</th>
-                          <th></th>
+                          <th>Reference</th><th>Claimant</th><th>Debtor</th>
+                          <th>Amount</th><th>Status</th><th>Date</th><th></th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1167,7 +1111,6 @@ export default function AdminPage() {
               </>
             )}
 
-            {/* ── CLAIMS TAB ── */}
             {tab === "claims" && (
               <div className="card">
                 <div className="card-header">
@@ -1212,15 +1155,8 @@ export default function AdminPage() {
                   <table>
                     <thead>
                       <tr>
-                        <th>Reference</th>
-                        <th>Claimant</th>
-                        <th>Company</th>
-                        <th>Debtor</th>
-                        <th>Amount</th>
-                        <th>Type</th>
-                        <th>Status</th>
-                        <th>Date</th>
-                        <th></th>
+                        <th>Reference</th><th>Claimant</th><th>Company</th><th>Debtor</th>
+                        <th>Amount</th><th>Type</th><th>Status</th><th>Date</th><th></th>
                       </tr>
                     </thead>
                     <tbody>
