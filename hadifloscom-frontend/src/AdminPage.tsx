@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import logo from "./assets/logo.png";
 
 interface Claim {
   id: number;
@@ -636,7 +637,7 @@ function LoginPage({ onLogin }: LoginPageProps) {
       <div className="login-card">
         <div className="login-logo">
           <div className="login-logo-mark">
-            <img src="/assets/logo.png" alt="HadiFlosCom"
+            <img src={logo} alt="HadiFlosCom"
               onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
           </div>
           <h1>HadiFlosCom</h1>
@@ -953,7 +954,7 @@ export default function AdminPage() {
         <aside className="sidebar">
           <div className="sidebar-brand">
             <div className="sidebar-logo-ring">
-              <img src="/assets/logo.png" alt="HadiFlosCom"
+              <img src={logo}  alt="HadiFlosCom"
                 onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
             </div>
             <div className="sidebar-brand-text">
